@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+
+<nav>
+  <a href="/">Home</a>
+  <a href="/login">Login</a>
+</nav>
+
+<% if (success) { %>
+  <div class="message success"><%= success %></div>
+<% } %>
+
+<% if (error) { %>
+  <div class="message error"><%= error %></div>
+<% } %>
+
+<form action="/register" method="POST">
+  <label>
+    Email
+    <input type="email" name="email" placeholder="Enter your email" required />
+  </label>
+
+  <label>
+    Password
+    <input type="password" name="password" placeholder="Enter your password" required />
+  </label>
+
+  <button type="submit">Register</button>
+</form>
+
+<%- include('partials/footer') %>

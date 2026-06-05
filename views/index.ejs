@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+
+<nav>
+  <a href="/login">Login</a>
+  <a href="/register">Register</a>
+</nav>
+
+<% if (success) { %>
+  <div class="message success"><%= success %></div>
+<% } %>
+
+<% if (error) { %>
+  <div class="message error"><%= error %></div>
+<% } %>
+
+<% if (email) { %>
+  <p>Welcome back, <strong><%= email %></strong>.</p>
+  <p>You are now on the home page.</p>
+<% } else { %>
+  <p>This is the home page for the demo application.</p>
+  <p>Use the links above to register a new account or login with existing credentials.</p>
+<% } %>
+
+<%- include('partials/footer') %>
