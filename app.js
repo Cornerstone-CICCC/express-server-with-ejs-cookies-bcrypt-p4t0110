@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const bcrypt = require('bcrypt');
+const cookieSession = require('cookie-session');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -26,9 +28,15 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
 
+app.use(cookieSession({
+  name: 'session',
+  keys: [process.env.SESSION_SECRET || 'dev_secret_key'],
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
+
 app.get('/', (req, res) => {
   const { success, error } = parseMessages(req);
-  const email = req.query.email || '';
+  const email = req.session && req.session.email ? req.session.email : (req.query.email || '');
   renderPage(res, 'index', { title: 'Home', email, success, error });
 });
 
@@ -42,7 +50,7 @@ app.get('/register', (req, res) => {
   renderPage(res, 'register', { title: 'Register', success, error });
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
   const email = req.body.email && req.body.email.trim();
   const password = req.body.password && req.body.password.trim();
 
@@ -54,11 +62,18 @@ app.post('/register', (req, res) => {
     return res.redirect('/register?error=This email is already registered');
   }
 
-  users.push({ email: email.toLowerCase(), password });
-  res.redirect('/login?success=Registration successful. Please login.');
+  try {
+    const saltRounds = 10;
+    const hashed = await bcrypt.hash(password, saltRounds);
+    users.push({ email: email.toLowerCase(), password: hashed });
+    res.redirect('/login?success=Registration successful. Please login.');
+  } catch (err) {
+    console.error('Error hashing password', err);
+    res.redirect('/register?error=Server error. Please try again.');
+  }
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const email = req.body.email && req.body.email.trim();
   const password = req.body.password && req.body.password.trim();
 
@@ -67,11 +82,27 @@ app.post('/login', (req, res) => {
   }
 
   const user = findUserByEmail(email);
-  if (!user || user.password !== password) {
+  if (!user) {
     return res.redirect('/login?error=Invalid email or password');
   }
 
-  res.redirect(`/?email=${encodeURIComponent(user.email)}&success=Login successful.`);
+  try {
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.redirect('/login?error=Invalid email or password');
+    }
+
+    req.session.email = user.email;
+    res.redirect('/?success=Login successful.');
+  } catch (err) {
+    console.error('Error comparing password', err);
+    res.redirect('/login?error=Server error. Please try again.');
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.session = null;
+  res.redirect('/?success=Logged out.');
 });
 
 app.use((req, res) => {
